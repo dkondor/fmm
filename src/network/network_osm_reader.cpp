@@ -26,24 +26,15 @@ protected:
   /** key -- value pairs; if any of the keys is present with any
    * of the corresponding values, this item is skipped */
   std::unordered_map<std::string, std::unordered_set<std::string> > exclude_tags;
-  /** key -- value pairs; all of the keys here need to be present
-   * with any of the values given -- if no value given, the key
-   * has to be present with any value */
-  std::unordered_map<std::string, std::unordered_set<std::string> > include_tags;
 
 public:
   /** test if the given way matches the filters */
   bool operator () (const osmium::Way& way) const {
-		/* test include_tags first -- note that this is an O(n*m) operation
-     * where n is the size of include_tags, and m is the number of tags
-     * the way has; since the size of include_tags will be typically
-     * small (1), this will not be a practical problem */
-		for(const auto& p : include_tags) {
-			const char* value = way.get_value_by_key(p.first.c_str());
-			if(!value) return false;
-			if(p.second.size() && p.second.count(std::string(value)) == 0)
-        return false;
-		}
+		/* test that way includes a "highway" tag
+     * all roads and paths must have it */
+		const char* tmpvalue = way.get_value_by_key("highway");
+    if(!tmpvalue) return false;
+    
 		/* test exclude_tags next -- iterate over all tags for the way for this */
     if(exclude_tags.size()) for(const osmium::Tag& tag : way.tags()) {
 			const auto& it = exclude_tags.find(std::string(tag.key()));
@@ -60,10 +51,6 @@ public:
      * do_filter == false
      * in this case, this filter will always return true */
     if(do_filter) {
-      /* must be highway */
-      include_tags.insert(std::make_pair(std::string("highway"),
-        std::unordered_set<std::string>()));
-      
       /* filtering identical to drive+service option in osmnx:
 filters['drive_service'] = ('["area"!~"yes"]["highway"!~"cycleway|footway|path|pedestrian|steps|track|corridor|'
                                 'elevator|escalator|proposed|construction|bridleway|abandoned|platform|raceway"]'
